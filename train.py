@@ -19,10 +19,11 @@ import time
 import argparse
 from storage import Storage
 from rule import Rule
+from dqn import DQN, Transition, ExperienceReplayMemory
 
 class Trainer: 
     '''
-    train a Temporal-Difference(TD) agent.
+    train a DQN agent with rules and experience replay.
     '''
 
     def __init__(self, is_resume=True): 
@@ -35,22 +36,13 @@ class Trainer:
         self.env = Env()
         self.env.train()
 
-        # possible actions to be explored in RF
-        self.obj_possible_action_id = self.env.obj_possible_action_id
-
-        self.obj_action_space = {}
-        for k,v in self.obj_possible_action_id.items(): 
-            self.obj_action_space[k] = len(v)
+        # possible actions to be explored in RL
+        self.action_space = 3
+        self.arr_possible_action_id = self.env.arr_possible_action_id[0:self.action_space]
 
         # TD paramaters
-        # the length of Q[s] and N[s] 
-        # should be number of actions to be explored + number of actions not to be explored
-        self.Q = Storage(self.obj_action_space)
         self.GAMMA = 0.85
         self.ALPHA = 0.5
-
-        # extra paramaters for debug
-        self.N = Storage(self.obj_action_space)
 
         # episode parameters
         self.MAX_EPISODES = 1000
@@ -65,12 +57,16 @@ class Trainer:
 
         # create game status window
         self.env.create_game_status_window()
-        self.env.game_status.update_by_Q(self.Q, self.N)
+
+        # create the DQN and experience replay memory
+        self.DQN = DQN(self.action_space)
+        self.experience_replay_memory = ExperienceReplayMemory()
+        self.BATCH_SIZE = 64
 
 
     def train(self): 
         '''
-        mc control
+        train
         '''
         begin_i = self.next_episode
         for i in range(begin_i, self.MAX_EPISODES): 
@@ -99,25 +95,16 @@ class Trainer:
         '''
         select an action by state using Q
         '''
-        action_space = self.obj_action_space[state.action_space_key]
-        if self.Q.has(state): 
-            log.info('select_action_using_Q: state[%s] found, using epsilon-greedy' % (str(self.Q.convert_state_to_key(state))))
-            Q_s = self.Q.get(state)
-            probs = self.get_probs(Q_s, epsilon, action_space)
-            action_id = np.random.choice(action_space, p=probs)
-            log.info('Q_s: %s, probs: %s, action_id: %s' % (Q_s, probs, action_id))
-            '''
-            # only train some states
-            ########################################
-            if self.Q.convert_state_to_key(state) in [2, 3]: 
-                action_id = np.argmax(Q_s)
-            ########################################
-            '''
-            return action_id
+        action_space = self.action_space
+        log.info('select_action_using_Q: using epsilon-greedy' % (str(self.Q.convert_state_to_key(state))))
 
-        # if Q does not have state, use random
-        log.info('select_action_using_Q: state[%s] not found, using random' % (str(self.Q.convert_state_to_key(state))))
-        action_id = np.random.randint(0, action_space)
+        # get Q_s using DQN's network by state
+        Q_s = self.DQN.get_Q(state)
+
+        # epsilon-greedy
+        probs = self.get_probs(Q_s, epsilon, action_space)
+        action_id = np.random.choice(action_space, p=probs)
+        log.info('Q_s: %s, probs: %s, action_id: %s' % (Q_s, probs, action_id))
         return action_id
 
 
@@ -140,10 +127,8 @@ class Trainer:
     def generate_episode_from_Q_and_update_Q(self, epsilon): 
         '''
         generate an episode using epsilon-greedy policy
-        and update Q after each step
         '''
         env = self.env
-        self.env.game_status.update_by_Q(self.Q, self.N)
 
         # init S
         env.reset()
@@ -156,7 +141,6 @@ class Trainer:
             if not g_episode_is_running: 
                 print('if you lock the boss already, press ] to begin the episode')
                 self.env.game_status.is_ai = False
-                self.env.game_status.update_by_Q(self.Q, self.N)
                 self.env.update_game_status_window()
                 time.sleep(1.0)
 
@@ -173,23 +157,34 @@ class Trainer:
             t1 = time.time()
             log.info('generate_episode step_i: %s,' % (step_i))
 
-            # select action(A) by state(S) using Q
+            # select action(A) by state(S) using rule and Q
             action_id = self.select_action(state, epsilon)
 
             self.env.game_status.step_i     = step_i
             self.env.game_status.error      = ''
-            self.env.game_status.state_id   = self.Q.convert_state_to_key(state)
+            self.env.game_status.state_id   = state.final_state_id
             self.env.update_game_status_window()
 
             # take action(A), get reward(R) and next state(S')
-            # at first, convert rf action_id to game action_id
-            game_action_id = self.obj_possible_action_id[state.action_space_key][action_id]
-            log.info('convert rl action_space_key[%s] action_id[%s] to game action id[%s]' % (state.action_space_key, action_id, game_action_id))
+            # at first, convert RL action_id to game action_id
+            game_action_id = self.arr_possible_action_id[action_id]
+            log.info('convert rl action_id[%s] to game action id[%s]' % (action_id, game_action_id))
             next_state, reward, is_done = env.step(game_action_id)
 
-            self.update_Q((state, action_id, reward, next_state), is_done)
+            # if next state is not a DQN state, this means the episode is done for DQN
+            done = is_done
+            if not next_state.state_id == self.env.state_manager.DQN_STATE_ID: 
+                done = True
 
-            self.env.game_status.update_by_Q(self.Q, self.N)
+            # store the transition(S_t, a_t, r_t, S_t+1) in D
+            transition = Transition(state, action_id, reward, next_state, done)
+            self.experience_replay_memory.store(transition)
+
+            # sample random minibatch of transitions from D
+            arr_transition_batch = self.experience_replay_memory.sample(self.BATCH_SIZE)
+
+            # update Q(aka: network)
+            self.DQN.update_Q(arr_transition_batch)
 
             # prepare for next step
             # S = S'
@@ -226,57 +221,14 @@ class Trainer:
         return policy_s
 
 
-    def update_Q(self, data, is_done): 
-        '''
-        update Q 
-        '''
-        (state, action_id, reward, next_state) = data
-
-        Q_s = self.Q.get(state).copy()
-        Q_s_next = self.Q.get(next_state).copy()
-        max_value_in_Q_s_next = Q_s_next.max()
-
-        Q_s_a = Q_s[action_id]
-
-        # if S t+1 is the end of the episode, then Q(S t+1, a) = 0
-        if is_done: 
-            max_value_in_Q_s_next = 0
-
-        # Q-learning (Watkins，1989)
-        # Q(S, A) = Q(S, A) + alpha * (R + gamma * MAXa(Q(S', a)) - Q(S, A))
-        new_value = Q_s_a + self.ALPHA * (reward + self.GAMMA * max_value_in_Q_s_next - Q_s_a)
-        self.Q.set(state, action_id, new_value)
-
-        # for debug
-        N_s = self.N.get(state).copy()
-        N_s_next = self.N.get(next_state).copy()
-        old_cnt = N_s[action_id]
-        new_cnt = old_cnt + 1
-        self.N.set(state, action_id, new_cnt)
-
-        log.debug('''update_Q: 
-                old_Q_s[%s] old_N_s[%s], Q_s_next[%s],
-                state[%s] action[%s] reward[%s] next_state[%s] max_value_in_Q_s_next[%s] 
-                new_Q_s[%s] new_N_s[%s]''' % (Q_s, N_s, Q_s_next,
-            str(self.Q.convert_state_to_key(state)), action_id, reward,
-            str(self.Q.convert_state_to_key(next_state)), max_value_in_Q_s_next,
-            self.Q.get(state), self.N.get(state)))
-
-
     def save_checkpoint(self, obj_information): 
         '''
         save checkpoint for future use.
         '''
         log.info('save_checkpoint...')
-        log.info('Q: %s' % (self.Q.summary('Q')))
-        log.info('N: %s' % (self.N.summary('N')))
         log.info('do NOT terminate the power, still saving...')
         # log.info('actions: %s' % (self.env.arr_action_name))
         
-        # pickle Q and N
-        with open(self.CHECKPOINT_FILE, 'wb') as f:
-            pickle.dump((self.Q, self.N), f, protocol=pickle.HIGHEST_PROTOCOL)
-
         log.info('still saving...')
 
         # write json information
@@ -294,16 +246,11 @@ class Trainer:
         log.info('load_checkpoint')
         obj_information = {'episode': 0}
         try: 
-            with open(self.CHECKPOINT_FILE, 'rb') as f: 
-                (self.Q, self.N) = pickle.load(f)
-
             with open(self.JSON_FILE, 'r', encoding='utf-8') as f: 
                 obj_information = json.load(f)
         except Exception as e: 
             log.error('ERROR load checkpoint: %s', (e))
 
-        log.info('Q: %s' % (self.Q.summary('Q')))
-        log.info('N: %s' % (self.N.summary('N')))
         log.debug(obj_information)
         return obj_information
 

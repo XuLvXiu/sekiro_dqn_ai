@@ -27,6 +27,8 @@ class State():
 
         self.is_player_posture_crash    = False
 
+        '''
+        not needed
         # if posture down to a reasonable value from former high value.
         self.is_player_posture_down_ok  = False
 
@@ -38,6 +40,7 @@ class State():
         # state-10 not included, since it may parry or attack.
         # we will treat it as state-5/6
         self.num_parry_steps_after_attack = 0
+        '''
 
         # if the boss attacks the player, and the player's hp drop slightly, < 10 for example.
         self.is_player_hp_down_slightly = False
@@ -71,8 +74,11 @@ class State():
         # it equals to state id actually
         self.final_state_id     = None
 
+        '''
+        not needed
         # the key of action space obj
         self.action_space_key   = 'default'
+        '''
 
 
     def get_final_state_id(self): 
@@ -108,7 +114,11 @@ class StateManager():
         self.TUCI_STATE_ID      = 1
         self.QINNA_STATE_ID     = 2
         self.FUZHOU_STATE_ID    = 3
+
+        '''
+        not needed, replaced by DQN
         self.BAD_TUCI_STATE_ID  = 4
+        '''
 
         # extra states
         self.PLAYER_HP_DOWN_STATE_ID    = 5
@@ -120,9 +130,17 @@ class StateManager():
         # more extra states
         self.POSTURE_CRASH_STATE_ID     = 8
 
+        '''
+        not needed, replaced by DQN
         # more extra states
         self.POSTURE_DOWN_STATE_ID      = 10
+        '''
 
+        # DQN state 
+        self.DQN_STATE_ID               = 10
+
+        '''
+        not needed, replaced by DQN
         # more extra states
         self.PARRY_AFTER_ATTACK_STATE_ID_1  = 11
         self.PARRY_AFTER_ATTACK_STATE_ID_2  = 12
@@ -145,12 +163,16 @@ class StateManager():
             self.PARRY_AFTER_ATTACK_STATE_ID_8,
             self.PARRY_AFTER_ATTACK_STATE_ID_9,
         ]
+        '''
 
         self.rule = Rule()
 
+        '''
+        not needed, replaced by DQN
         # images similarity
         self.orb    = cv2.ORB_create()
         self.bf     = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+        '''
 
 
     def save(self, state): 
@@ -168,18 +190,24 @@ class StateManager():
         # generate state id, might be changed later.
         state.state_id = self.generate_state_id(state)
 
+        '''
+        not needed, replaced by DQN
         # the last opportunity to generate extra state id
         value = self.generate_extra_state_id(state)
         if value is not None: 
             state.state_id = value
             log.debug('generate_extra_state_id, state_id: %s(history num: %s)' % (state.state_id, 
                 state.num_parry_steps_after_attack))
+        '''
 
         # the final state id
         state.final_state_id = state.state_id
 
+        '''
+        not needed, replaced by DQN
         # generate action space key
         state.action_space_key = self.rule.generate_action_space_key(state, self)
+        '''
 
         # save it, at last.
         self.arr_state.append(state)
@@ -248,6 +276,8 @@ class StateManager():
                     return state_id
         '''
 
+        '''
+        not needed, replaced by DQN
         # if posture down to a reasonable value
         if state.is_player_posture_down_ok: 
             if state.class_id in [state.NORMAL_CLASS_ID]: 
@@ -257,6 +287,7 @@ class StateManager():
                 if sim > 0.9612 and sim < 0.99: 
                     state_id = self.POSTURE_DOWN_STATE_ID
                     return state_id
+        '''
 
         # default case, use the class id derived from the classification model.
         # some classes need to check signal strength
@@ -264,13 +295,13 @@ class StateManager():
         class_id = state.class_id
         # class 0, 4
         if class_id == state.NORMAL_CLASS_ID: 
-            state_id = class_id
-            log.debug('class_id is NORMAL_CLASS_ID, class_id[%s]->state_id[%s]' % (class_id, state_id))
+            state_id = self.DQN_STATE_ID
+            log.debug('class_id is NORMAL_CLASS_ID, class_id[%s]->state_id[%s] DQN' % (class_id, state_id))
             return state_id
 
         if class_id == state.BAD_TUCI_CLASS_ID: 
-            state_id = class_id
-            log.debug('class_id is BAD_TUCI_CLASS_ID, class_id[%s]->state_id[%s]' % (class_id, state_id))
+            state_id = self.DQN_STATE_ID
+            log.debug('class_id is BAD_TUCI_CLASS_ID, class_id[%s]->state_id[%s] DQN' % (class_id, state_id))
             return state_id
 
         # class 1, 2, 3
@@ -296,6 +327,8 @@ class StateManager():
         return state_id
 
 
+    """
+    not needed. replaced by DQN
     def generate_extra_state_id(self, state): 
         '''
         if this state is a parry state and after attack
@@ -317,6 +350,7 @@ class StateManager():
                 return self.arr_parry_after_attack_state_id[i]
 
         return self.arr_parry_after_attack_state_id[-1]
+    """
 
 
     def get_last_state(self): 
@@ -326,6 +360,8 @@ class StateManager():
         return self.arr_state[-1]
 
 
+    """
+    not needed. replaced by DQN
     def image_similarity(self, img_1, img_2): 
         '''
         calculate images similarity
@@ -353,4 +389,5 @@ class StateManager():
         return sim
 
 
+    """
 

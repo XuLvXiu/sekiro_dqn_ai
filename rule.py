@@ -7,48 +7,56 @@ class Rule():
 
     def apply(self, state, env): 
         '''
-        apply rule, get action id(not game action id), which is always 0(action space is 1).
+        apply rule, get action id(not game action id)
         this method might be called multi times.
+        see env.arr_possible_action_id
         '''
         # predefined state
-        # state 11-19
-        if state.state_id in env.state_manager.arr_parry_after_attack_state_id:  
-            return 0
-
         # state-8:
         if state.state_id == env.state_manager.POSTURE_CRASH_STATE_ID: 
-            return 0
+            return 5
 
         # state-7: 
         if state.state_id == env.state_manager.ATTACK_AFTER_DAMAGE_STATE_ID: 
-            return 0
+            return 3
 
         # state-6: 
         if state.state_id == env.state_manager.HULU_STATE_ID: 
-            return 0
+            return 6
 
         # state-5: 
         if state.state_id == env.state_manager.PLAYER_HP_DOWN_STATE_ID: 
-            return 0
+            return 4
 
         # classification model
-        # state-0: class-0
-        if state.state_id == env.state_manager.NORMAL_STATE_ID: 
-            return 0
 
         # state-4: class-4
         if state.state_id == env.state_manager.BAD_TUCI_STATE_ID: 
             return 0
 
+        # state-3: 
+        if state.state_id == env.state_manager.FUZHOU_STATE_ID: 
+            return 3
+
         # state-2: 
         if state.state_id == env.state_manager.QINNA_STATE_ID: 
+            return 3
+
+        # state-1: 
+        if state.state_id == env.state_manager.TUCI_STATE_ID: 
+            return 2
+
+        # state-0: class-0
+        if state.state_id == env.state_manager.NORMAL_STATE_ID: 
             return 0
 
-        # state-1/3/10
-        # no rule found, will use Q
+        # state-10
+        # no rule found, will use DQN
         return None
 
 
+    """
+    not neeeded, replaced by DQN
     def is_parry_after_attack_state(self, state, state_manager): 
         '''
         if a parry after attack state
@@ -109,3 +117,4 @@ class Rule():
 
         key = state.state_id
         return obj[key]
+    """

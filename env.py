@@ -83,52 +83,27 @@ class Env(object):
         self.SHIPO_TRIPLE_ATTACK_ACTION_ID  = 11
         self.POSTURE_CRASH_ACTION_ID        = 12
 
-        # possible actions to be explored in RF
+        # possible actions in the game.
         # why we put it here?
         # it can be used both in train.py and main.py
-        self.obj_possible_action_id = {
-            'simple_attack': [
-                self.ATTACK_ACTION_ID, 
-                self.DOUBLE_ATTACK_ACTION_ID, 
-                self.TRIPLE_ATTACK_ACTION_ID,
-            ],
-            'shipo_attack': [
-                self.SHIPO_ATTACK_ACTION_ID,
-                self.SHIPO_DOUBLE_ATTACK_ACTION_ID,
-            ],
-            'qinna_attack': [
-                self.DOUBLE_ATTACK_ACTION_ID, 
-            ],
-            'fuzhou_attack': [
-                self.ATTACK_ACTION_ID, 
-                self.DOUBLE_ATTACK_ACTION_ID, 
-            ],
-            'parry': [
-                self.PARRY_ACTION_ID,
-            ],
-            'player_hp_down': [
-                self.STAND_UP_ACTION_ID,
-            ],
-            'player_posture_crash': [
-                self.POSTURE_CRASH_ACTION_ID,
-            ],
-            'hulu': [
-                self.TAKE_HULU_ACTION_ID,
-            ],
-            'player_posture_down': [
-                self.ATTACK_ACTION_ID, 
-                self.DOUBLE_ATTACK_ACTION_ID, 
-            ],
-            'parry_after_attack': [
-                self.PARRY_ACTION_ID,
-            ],
-            'attack_after_damage': [
-                self.DOUBLE_ATTACK_ACTION_ID,
-            ],
-            'default': [
-                self.PARRY_ACTION_ID,
-            ],
-        }
+        self.arr_possible_action_id = [
+            # the first 3 actions are used by RL to explore
+            # 0
+            self.PARRY_ACTION_ID,
+            # 1
+            self.ATTACK_ACTION_ID, 
+            # 2
+            self.SHIPO_ATTACK_ACTION_ID,
+
+            # 3
+            self.DOUBLE_ATTACK_ACTION_ID, 
+            # 4
+            self.STAND_UP_ACTION_ID,
+            # 5
+            self.POSTURE_CRASH_ACTION_ID,
+            # 6
+            self.TAKE_HULU_ACTION_ID,
+        ]
 
         # state manager
         self.state_manager = StateManager()
@@ -171,9 +146,10 @@ class Env(object):
         self.game_status_window = None
 
         # boss angry point, very naive
-        self.boss_angry_point = 100
+        # self.boss_angry_point = 100
 
 
+    """
     def change_boss_angry_point(self, action, **kwargs): 
         '''
         change boss angry point according the action
@@ -208,6 +184,8 @@ class Env(object):
         if self.boss_angry_point < 0: 
             self.boss_angry_point = 0
 
+
+    """
 
     def create_game_status_window(self): 
         '''
@@ -396,13 +374,16 @@ class Env(object):
             # should check boss hp down or attack was blocked, to avoid sleep too long.
 
             # we attack the boss, he will be very angry.
-            self.change_boss_angry_point('PLAYER_ATTACK')
+            # self.change_boss_angry_point('PLAYER_ATTACK')
 
+            '''
+            not needed
             # since it is an attack, we will mark it.
             # it will be used by the following parry states.
             last_state = self.state_manager.get_last_state()
             last_state.is_attack = True
             last_state.is_parry_after_attack = False
+            '''
             time.sleep(0.8)
 
 
@@ -469,7 +450,7 @@ class Env(object):
 
         self.previous_player_posture            = 0
         self.player_posture_high                = 0
-        self.boss_angry_point   = 100
+        # self.boss_angry_point   = 100
 
         self.executor.interrupt_action()
 
@@ -526,12 +507,16 @@ class Env(object):
             state.is_player_posture_crash = True
 
         # if boss attacks player, its angry point should decrease a little.
+        '''
         if player_posture > self.previous_player_posture: 
             self.change_boss_angry_point('BOSS_ATTACK')
+        '''
 
         '''
         check posture down
         '''
+        '''
+        not needed
         if player_posture < self.previous_player_posture: 
             # posture decrease to a reasonable value.
             state.is_player_posture_down_ok         = True
@@ -551,6 +536,7 @@ class Env(object):
         # if our posture crashed, cancel the attack
         if state.is_player_posture_crash: 
             state.is_player_posture_down_ok = False
+        '''
 
         # predict class id
         inputs = self.transform_state(state)
@@ -565,20 +551,22 @@ class Env(object):
         # save it to state history manager.
         self.state_manager.save(state)
 
+        '''
         # if we take hulu, boss will be a little angry.
         if state.state_id == self.state_manager.HULU_STATE_ID: 
             self.change_boss_angry_point('TAKE_HULU')
+        '''
 
         # never modify the state from now on.
 
-        log.debug('get new state end, hp: %5.2f %5.2f, class_id: %s, state_id: %s, arr_history_class_id: %s, posture: %.1f, is_attack: %s, is_parry_after_attack: %s, num_parry_steps_after_attack: %s, is_player_posture_down_ok: %s, action_space_key: %s' % (state.player_hp, 
+        log.debug('get new state end, hp: %5.2f %5.2f, class_id: %s, state_id: %s, arr_history_class_id: %s, posture: %.1f, is_attack: %s, is_parry_after_attack: %s' % (state.player_hp, 
             state.boss_hp, state.class_id, state.state_id, state.arr_history_class_id,
-            state.player_posture, state.is_attack, state.is_parry_after_attack, state.num_parry_steps_after_attack,
-            state.is_player_posture_down_ok, state.action_space_key))
+            state.player_posture, state.is_attack, state.is_parry_after_attack 
+            ))
 
         # update game status
         self.game_status.update_by_state(state)
-        self.game_status.boss_angry_point = self.boss_angry_point
+        # self.game_status.boss_angry_point = self.boss_angry_point
         self.update_game_status_window()
 
         return state
@@ -601,8 +589,10 @@ class Env(object):
         is_done = self.check_done(new_state)
         (reward, log_reward) = self.cal_reward(new_state, action_id)
 
+        '''
         # boss angry will descrease as time passes.
         self.change_boss_angry_point('TIME_PASS')
+        '''
 
         log.debug('new step end, is_done[%s], is_dead[%s][%s], player_life[%s], reward[%s %s]' % (is_done, self.is_player_dead, self.is_boss_dead,
             self.player_life,
@@ -635,8 +625,10 @@ class Env(object):
 
             log_reward += 'player_hp-,'
 
+            '''
             # if boss attacks player, its angry point should decrease a little.
             self.change_boss_angry_point('BOSS_ATTACK_DAMAGE')
+            '''
 
         if new_state.is_boss_hp_down: 
             reward += 30
@@ -644,8 +636,10 @@ class Env(object):
             reward += (attack_count - 1) * 10
             log_reward += 'boss_hp-,attack_count:%s,' % (attack_count)
 
+            '''
             # if we attacks boss multi times, he will be more angry.
             self.change_boss_angry_point('PLAYER_ATTACK_DAMAGE', attack_count=attack_count)
+            '''
 
             if not self.is_attack(action_id): 
                 # sometimes, the player is stunned when it pressed the left mouse button, 
@@ -695,6 +689,9 @@ class Env(object):
             time.sleep(0.05)
 
     
+
+'''
+the codes below are incorrect 
 
 if __name__ == '__main__': 
     is_debug = True
@@ -858,4 +855,4 @@ if __name__ == '__main__':
     # end of while loop
 
     env.stop()
-
+'''
