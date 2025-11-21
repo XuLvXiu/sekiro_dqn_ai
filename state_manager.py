@@ -42,6 +42,7 @@ class State():
         self.num_parry_steps_after_attack = 0
         '''
 
+        # no use.
         # if the boss attacks the player, and the player's hp drop slightly, < 10 for example.
         self.is_player_hp_down_slightly = False
 
@@ -79,6 +80,9 @@ class State():
         # the key of action space obj
         self.action_space_key   = 'default'
         '''
+
+        # image transformed for DQN
+        self.image_DQN  = None
 
 
     def get_final_state_id(self): 

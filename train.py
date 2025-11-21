@@ -19,11 +19,13 @@ import time
 import argparse
 from storage import Storage
 from rule import Rule
-from dqn import DQN, Transition, ExperienceReplayMemory
+from dqn import DQN
+from experience_replay_memory import Transition, ExperienceReplayMemory
 
 class Trainer: 
     '''
     train a DQN agent with rules and experience replay.
+    the algorithm is in the file: DQNNaturePaper.pdf
     '''
 
     def __init__(self, is_resume=True): 
@@ -58,8 +60,10 @@ class Trainer:
         # create game status window
         self.env.create_game_status_window()
 
-        # create the DQN and experience replay memory
+        # create the DQN 
         self.DQN = DQN(self.action_space)
+
+        # initialize replay memory D to capacity N
         self.experience_replay_memory = ExperienceReplayMemory()
         self.BATCH_SIZE = 64
 
@@ -96,7 +100,7 @@ class Trainer:
         select an action by state using Q
         '''
         action_space = self.action_space
-        log.info('select_action_using_Q: using epsilon-greedy' % (str(self.Q.convert_state_to_key(state))))
+        log.info('select_action_using_Q: using epsilon-greedy')
 
         # get Q_s using DQN's network by state
         Q_s = self.DQN.get_Q(state)
@@ -110,13 +114,13 @@ class Trainer:
 
     def select_action(self, state, epsilon): 
         '''
-        select an action by state using Q, model and rules.
+        select an action by state using Q and rules.
         '''
         # rules: 
         obj_rule = Rule()
         action_id = obj_rule.apply(state, self.env)
         if action_id is not None: 
-            log.info('select_action: state[%s], using predefined rule: [%s]' % (str(self.Q.convert_state_to_key(state)), action_id))
+            log.info('select_action: state[%s], using predefined rule: [%s]' % (state.state_id, action_id))
             return action_id
 
         # Q: 
@@ -157,7 +161,7 @@ class Trainer:
             t1 = time.time()
             log.info('generate_episode step_i: %s,' % (step_i))
 
-            # select action(A) by state(S) using rule and Q
+            # select action(A) by state(S) using rules and Q
             action_id = self.select_action(state, epsilon)
 
             self.env.game_status.step_i     = step_i
@@ -171,21 +175,31 @@ class Trainer:
             log.info('convert rl action_id[%s] to game action id[%s]' % (action_id, game_action_id))
             next_state, reward, is_done = env.step(game_action_id)
 
-            # if next state is not a DQN state, this means the episode is done for DQN
-            done = is_done
-            if not next_state.state_id == self.env.state_manager.DQN_STATE_ID: 
-                done = True
+            # if current state is a DQN state, we need to do more work on DQN.
+            if state.state_id == self.env.state_manager.DQN_STATE_ID: 
+                t3 = time.time()
+                # if next state is not a DQN state, this means the episode is done for DQN
+                done = is_done
+                if not next_state.state_id == self.env.state_manager.DQN_STATE_ID: 
+                    done = True
 
-            # store the transition(S_t, a_t, r_t, S_t+1) in D
-            transition = Transition(state, action_id, reward, next_state, done)
-            self.experience_replay_memory.store(transition)
+                # store the transition(S_t, a_t, r_t, S_t+1) in D
+                transition = Transition(state, action_id, reward, next_state, done)
+                self.experience_replay_memory.store(transition)
 
-            # sample random minibatch of transitions from D
-            arr_transition_batch = self.experience_replay_memory.sample(self.BATCH_SIZE)
+                # sample random minibatch of transitions from D
+                arr_transition_batch = self.experience_replay_memory.sample(self.BATCH_SIZE)
 
-            # update Q(aka: network)
-            self.DQN.update_Q(arr_transition_batch)
+                if arr_transition_batch is not None: 
+                    if not len(arr_transition_batch) == self.BATCH_SIZE: 
+                        print('something is wrong with the experience_replay_memory.sample')
+                        sys.exit(-1)
+                    # update Q(aka: network)
+                    self.DQN.update_Q(arr_transition_batch)
+                t4 = time.time()
+                log.info('DQN total time: %.2f s' % (t4-t3))
 
+            # everything is done.
             # prepare for next step
             # S = S'
             state = next_state

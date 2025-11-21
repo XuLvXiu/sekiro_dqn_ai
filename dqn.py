@@ -1,60 +1,13 @@
 #encoding=utf8
 
-print('importing...')
-import random
+print('importing DQN...')
 from torchvision.models import resnet18, ResNet18_Weights
+from experience_replay_memory import Transition
 import torch
-
-class Transition(): 
-    '''
-    experience replay transition item
-    '''
-
-    def __init__(self, state, action_id, reward, next_state, is_done): 
-        '''
-        init
-        '''
-        self.state      = state
-        self.action_id  = action_id
-        self.reward     = reward
-        self.next_state = next_state
-        self.is_done    = is_done
-
-
-class ExperienceReplayMemory(): 
-    '''
-    experience replay memory D.
-    '''
-
-    def __init__(self): 
-        '''
-        # initialize replay memory D to capacity N
-        '''
-        self.N                  = 10000
-        self.arr_transitions    = []
-
-
-    def store(self, transition): 
-        '''
-        store the transition in D
-        '''
-        if len(self.arr_transitions) >= self.N: 
-            self.arr_transitions.pop(0)
-
-        self.arr_transitions.append(transition)
-
-
-    def sample(self, batch_size): 
-        '''
-        sample random minibatch of transitions from D.
-        '''
-        ret = random.sample(self.arr_transitions, batch_size)
-        return ret
-
 
 class DQN(): 
     '''
-    DQN
+    DQN (nature14236. 2015)
     '''
 
     def __init__(self, action_space): 
@@ -62,50 +15,47 @@ class DQN():
         init
         '''
         # learning rate
-        self.lr = 0.01
+        self.LEARNING_RATE  = 0.01
 
         # every C steps, reset Q_hat = Q
         self.C      = 100
         self.step_i = 0
 
-
-        self.action_space   = action_space
         self.num_classes    = action_space
 
         # create two networks
-        # action-value function Q with weights theta
-        # and target action-value function Q_hat with weights theta_bar = theta
+        # initialize action-value function Q with random weights theta
+        # initialize target action-value function Q_hat with weights theta_bar = theta
         # I suppose it should be pronounced as theta bar.
-        self.network        = create_network()
-        self.target_network = create_network()
+        self.network        = self.create_network()
+        self.target_network = self.create_network()
+
+        # copy weights
+        self.target_network.load_state_dict(self.network.state_dict())
+        self.target_network.eval()
+
+        # check if the two networks have the same weights.
+        for (name_1, p1), (name_2, p2) in zip(self.network.state_dict().items(),
+                self.target_network.state_dict().items()): 
+            if not name_1 == name_2: 
+                print('two network state_dict() have different layer names', name_1, name_2)
+                sys.exit(-1)
+
+            if not torch.equal(p1, p2): 
+                print('two network state_dict() have different params')
+                sys.exit(-1)
 
         '''
+        however, if we dump the two state_dict() to binary files, the MD5 of the files are different...
+        I think it might be due to tensor floating point numbers.
+        If you use torch.save, it will be even more wired.
         '''
-        '''
-        '''
-        '''
-        '''
-        # todo: check if the two networks has the same weight initially.
-        '''
-        '''
-        '''
-        '''
-        '''
-        '''
-        self.target_network.load_state_dict(self.network.state_dict())
 
         # create optimizer using network's parameters.
-        self.optimizer = torch.optim.Adam(self.network.parameters(), lr=self.lr)
+        self.optimizer = torch.optim.Adam(self.network.parameters(), lr=self.LEARNING_RATE)
 
         # create loss function.
         self.loss_function = torch.nn.MSELoss()
-
-        # the function to transform state.image
-        self.eval_transform = transforms.Compose([
-            transforms.Resize((224, 224)),
-            transforms.ToTensor(),
-            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
-        ])
 
 
     def create_network(self): 
@@ -122,21 +72,52 @@ class DQN():
         return model
 
 
-    def update_Q(arr_transition_batch): 
+    def update_Q(self, arr_transition_batch): 
         '''
-        update the network using experience replay batch
+        update the network using experience replay batch.
+        we must use vector operations to speed up the process,
+        since the game is still running...
         '''
+        # convert list of object to seperated lists of property.
+        # can we make it tiny and faster?
+        arr_state       = torch.tensor([t.state.image_DQN for t in arr_transition_batch])
+        arr_action      = torch.tensor([t.action_id for t in arr_transition_batch])
+        arr_reward      = torch.tensor([t.reward for t in arr_transition_batch])
+        arr_next_state  = torch.tensor([t.next_state.image_DQN for t in arr_transition_batch])
+        arr_done        = torch.tensor([t.done for t in arr_transition_batch])
+
+        # Q-learning (Watkins，1989)
+        # Q(S, A) = Q(S, A) + alpha * (R + gamma * MAXa(Q(S', a)) - Q(S, A))
+
         # calculate y_j
+        # y_j = r_j + gamma * MAXa(Q_hat(S j+1, a, theta_bar))
+        with torch.no_grad(): 
+            inputs = arr_next_state
+            if torch.cuda.is_available(): 
+                inputs      = inputs.cuda()
+                arr_reward  = arr_reward.cuda()
+                arr_donw    = arr_done.cuda()
+            Q_s_next = self.target_network(inputs)
+            max_value_in_Q_s_next = Q_s_next.max(1)[0]
+            y_j = arr_reward + self.GAMMA * max_value_in_Q_s_next
 
         # if episode terminates at step j+1, y_j = r_j
-        y = reward
-        if not is_done: 
-            Q_s_target = self.get_Q_target(state)
-            # y_j = r_j + gamma * MAXa(Q_target(S j+1, a, theta_bar))
-            y = reward + self.GAMMA * max_value_in_Q_s_next
+        y_j[arr_done] = arr_reward[arr_done]
 
+        # calculate y
+        # with grad
+        self.network.train()
+        inputs = arr_state
+        if torch.cuda.is_available(): 
+            inputs      = inputs.cuda()
+            arr_action  = arr_action.cuda()
+        Q_s = self.network(inputs)
+        Q_s_a = Q_s[arr_action]
+        y = Q_s_a
 
-        # performance a gradient descent step on (y_j - Q(S_j, a_j, theta)) ^ 2 with respect to the network parameters theta.
+        # performance a gradient descent step on (y_j - Q(S_j, a_j, theta)) ^ 2 
+        # with respect to the network parameters theta.
+        loss = self.loss_function(y, y_j)
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
@@ -152,38 +133,66 @@ class DQN():
         '''
         get Q_s using network by state
         '''
-        inputs = self.transform_state(state)
+        inputs = Transition.transform_state(state).unsqueeze(0)
 
         with torch.no_grad(): 
             if torch.cuda.is_available(): 
                 inputs = inputs.cuda()
-            outputs = self.model(inputs)
-            # _, predicted = torch.max(outputs, 1)
-            # state.class_id = predicted.item()
-
-            '''''''''''''''''''''''''''''''''''''''''
-            '''''''''''''''''''''''''''''''''''''''''
-            '''''''''''''''''''''''''''''''''''''''''
-            '''''''''''''''''''''''''''''''''''''''''
-            '''''''''''''''''''''''''''''''''''''''''
-            # todo: 看一下模型的output 输出值是什么
-            '''''''''''''''''''''''''''''''''''''''''
-            '''''''''''''''''''''''''''''''''''''''''
-            '''''''''''''''''''''''''''''''''''''''''
-            '''''''''''''''''''''''''''''''''''''''''
-            '''''''''''''''''''''''''''''''''''''''''
-
+            outputs = self.network(inputs)
             return outputs
 
 
-    def transform_state(self, state): 
-        '''
-        transform state:
-            BGR -> RGB tensor
-            add a new axis
-        '''
-        image = cv2.cvtColor(state.image, cv2.COLOR_BGR2RGB)
-        pil_image = Image.fromarray(image)
-        pil_image = self.eval_transform(pil_image)
-        inputs = pil_image.unsqueeze(0)
-        return inputs
+# test 
+if __name__ == '__main__': 
+    from experience_replay_memory import ExperienceReplayMemory, Transition
+    from state_manager import State
+    import cv2
+
+    action_space = 3
+    model = DQN(action_space)
+    experience_replay_memory = ExperienceReplayMemory()
+    BATCH_SIZE = 2
+
+    arr_transition_batch = experience_replay_memory.sample(BATCH_SIZE)
+    if arr_transition_batch is not None: 
+        print('sample test error')
+        sys.exit(0)
+
+    # transition 1
+    state = State()
+    state.image = cv2.imread('./assets/20251027_084204_0.png')
+    action_id = 1
+    reward = 42.1
+    next_state = State()
+    next_state.image = cv2.imread('./assets/20251027_084204_45.png')
+    done = False
+
+    Q_s = model.get_Q(state)
+    # Q_s tensor([[-0.0628, -0.2088,  0.8123]], device='cuda:0')
+    print('Q_s', Q_s)
+
+    t = Transition(state, action_id, reward, next_state, done)
+    experience_replay_memory.store(t)
+
+    arr_transition_batch = experience_replay_memory.sample(BATCH_SIZE)
+    if arr_transition_batch is not None: 
+        print('sample test error')
+        sys.exit(0)
+
+    # transition 2
+    state = next_state
+    action_id = 2
+    reward = 100
+    next_state = State()
+    next_state.image = cv2.imread('./assets/20251027_084204_54.png')
+    done = True
+
+    t = Transition(state, action_id, reward, next_state, done)
+    experience_replay_memory.store(t)
+
+    arr_transition_batch = experience_replay_memory.sample(BATCH_SIZE)
+    if not len(arr_transition_batch) == BATCH_SIZE: 
+        print('sample test error')
+        sys.exit(0)
+
+    model.update_Q(arr_transition_batch)
