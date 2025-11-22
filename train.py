@@ -61,7 +61,9 @@ class Trainer:
 
         # initialize replay memory D to capacity N
         self.experience_replay_memory = ExperienceReplayMemory()
-        self.BATCH_SIZE = 64
+
+        # small batch runs faster
+        self.BATCH_SIZE = 64 / 2
 
 
     def train(self): 
