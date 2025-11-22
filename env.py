@@ -63,6 +63,9 @@ class Env(object):
 
             # 12
             'POSTURE_CRASH',
+
+            # 13
+            'LONG_PARRY',
             'JUMP'
         ]
 
@@ -83,18 +86,20 @@ class Env(object):
         self.SHIPO_TRIPLE_ATTACK_ACTION_ID  = 11
         self.POSTURE_CRASH_ACTION_ID        = 12
 
+        self.LONG_PARRY_ACTION_ID           = 13
+
         # possible actions in the game.
         # why we put it here?
         # it can be used both in train.py and main.py
         self.arr_possible_action_id = [
-            # the first 3 actions are used by RL to explore
+            # the first 2 actions are used by RL to explore
             # 0
-            self.PARRY_ACTION_ID,
+            self.LONG_PARRY_ACTION_ID,
             # 1
             self.ATTACK_ACTION_ID, 
+
             # 2
             self.SHIPO_ATTACK_ACTION_ID,
-
             # 3
             self.DOUBLE_ATTACK_ACTION_ID, 
             # 4
@@ -103,6 +108,8 @@ class Env(object):
             self.POSTURE_CRASH_ACTION_ID,
             # 6
             self.TAKE_HULU_ACTION_ID,
+            # 7
+            self.PARRY_ACTION_ID,
         ]
 
         # state manager
@@ -278,6 +285,9 @@ class Env(object):
         check if action_id is parry related.
         '''
         if action_id == self.PARRY_ACTION_ID: 
+            return True
+
+        if action_id == self.LONG_PARRY_ACTION_ID: 
             return True
 
         return False

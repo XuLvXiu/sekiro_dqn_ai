@@ -51,7 +51,7 @@ class Rule():
 
         # state-0: class-0
         if state.state_id == env.state_manager.NORMAL_STATE_ID: 
-            return 0
+            return 7
 
         # state-10
         # no rule found, will use DQN
