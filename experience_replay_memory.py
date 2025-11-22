@@ -30,11 +30,11 @@ class Transition():
 
         # transform state.image and next_state.image
         if self.state.image_DQN is None: 
-            log.info('transforms Transition.state -> DQN')
+            log.info('transforms transition.state -> DQN')
             self.state.image_DQN = Transition.transform_state(self.state)
 
         if self.next_state.image_DQN is None: 
-            log.info('transforms Transition.next_state -> DQN')
+            log.info('transforms transition.next_state -> DQN')
             self.next_state.image_DQN = Transition.transform_state(self.next_state)
 
 

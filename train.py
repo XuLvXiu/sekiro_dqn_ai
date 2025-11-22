@@ -42,10 +42,6 @@ class Trainer:
         self.action_space = 3
         self.arr_possible_action_id = self.env.arr_possible_action_id[0:self.action_space]
 
-        # TD paramaters
-        self.GAMMA = 0.85
-        self.ALPHA = 0.5
-
         # episode parameters
         self.MAX_EPISODES = 1000
         self.next_episode = 0

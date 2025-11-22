@@ -4,6 +4,8 @@ print('importing DQN...')
 from torchvision.models import resnet18, ResNet18_Weights
 from experience_replay_memory import Transition
 import torch
+from log import log
+import time
 
 class DQN(): 
     '''
@@ -14,8 +16,11 @@ class DQN():
         '''
         init
         '''
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
         # learning rate
         self.LEARNING_RATE  = 0.01
+        self.GAMMA = 0.85
 
         # every C steps, reset Q_hat = Q
         self.C      = 100
@@ -32,7 +37,6 @@ class DQN():
 
         # copy weights
         self.target_network.load_state_dict(self.network.state_dict())
-        self.target_network.eval()
 
         # check if the two networks have the same weights.
         for (name_1, p1), (name_2, p2) in zip(self.network.state_dict().items(),
@@ -78,46 +82,77 @@ class DQN():
         we must use vector operations to speed up the process,
         since the game is still running...
         '''
-        # convert list of object to seperated lists of property.
+        # convert list of object to seperated tensors of property.
+        # 0.00555 s
         # can we make it tiny and faster?
-        arr_state       = torch.tensor([t.state.image_DQN for t in arr_transition_batch])
+
+        # t.state.image_DQN is tensor, so we can use torch.stack
+        # [3, 224, 224]
+        # print(arr_transition_batch[0].state.image_DQN.shape)
+        arr_state       = torch.stack([t.state.image_DQN for t in arr_transition_batch])
+        # [BATCH_SIZE, 3, 224, 224]
+        # print(arr_state.shape)
+
         arr_action      = torch.tensor([t.action_id for t in arr_transition_batch])
         arr_reward      = torch.tensor([t.reward for t in arr_transition_batch])
-        arr_next_state  = torch.tensor([t.next_state.image_DQN for t in arr_transition_batch])
+        arr_next_state  = torch.stack([t.next_state.image_DQN for t in arr_transition_batch])
         arr_done        = torch.tensor([t.done for t in arr_transition_batch])
+
 
         # Q-learning (Watkins，1989)
         # Q(S, A) = Q(S, A) + alpha * (R + gamma * MAXa(Q(S', a)) - Q(S, A))
 
         # calculate y_j
+        # 0.07569 s
         # y_j = r_j + gamma * MAXa(Q_hat(S j+1, a, theta_bar))
+        self.target_network.eval()
         with torch.no_grad(): 
             inputs = arr_next_state
             if torch.cuda.is_available(): 
                 inputs      = inputs.cuda()
                 arr_reward  = arr_reward.cuda()
-                arr_donw    = arr_done.cuda()
+                arr_done    = arr_done.cuda()
             Q_s_next = self.target_network(inputs)
-            max_value_in_Q_s_next = Q_s_next.max(1)[0]
+            max_value_in_Q_s_next, max_indices = Q_s_next.max(dim=1)
             y_j = arr_reward + self.GAMMA * max_value_in_Q_s_next
 
         # if episode terminates at step j+1, y_j = r_j
         y_j[arr_done] = arr_reward[arr_done]
 
+        max_log_items = 4
+        log.debug('step_i[%s], Q_s_next[%s], max_value_in_Q_s_next[%s], reward[%s], done[%s], y_j[%s]' % (self.step_i, 
+            Q_s_next[0:max_log_items], 
+            max_value_in_Q_s_next[0:max_log_items], arr_reward[0:max_log_items], arr_done[0:max_log_items],
+            y_j[0:max_log_items]))
+
         # calculate y
-        # with grad
+        # 0.07024 s
         self.network.train()
         inputs = arr_state
         if torch.cuda.is_available(): 
             inputs      = inputs.cuda()
             arr_action  = arr_action.cuda()
+
+        # torch.cuda.synchronize()
+        # t1 = time.time()
         Q_s = self.network(inputs)
-        Q_s_a = Q_s[arr_action]
+        # torch.cuda.synchronize()
+        # t2 = time.time()
+        # print(t2-t1)
+
+        # from each row, get Q_s_a by action
+        rows = torch.arange(Q_s.shape[0]).to(self.device)
+        Q_s_a = Q_s[rows, arr_action]
         y = Q_s_a
+
+        log.debug('Q_s[%s], action[%s], Q_s_a|y[%s]' % (Q_s[0:max_log_items], 
+            arr_action[0:max_log_items], y[0:max_log_items]))
 
         # performance a gradient descent step on (y_j - Q(S_j, a_j, theta)) ^ 2 
         # with respect to the network parameters theta.
+        # 0.01423 s
         loss = self.loss_function(y, y_j)
+        log.debug('loss[%s]' % (loss))
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
@@ -125,7 +160,8 @@ class DQN():
         self.step_i += 1
 
         # every C steps, reset Q_hat = Q
-        if self.step_i % C == 0: 
+        if self.step_i % self.C == 0: 
+            log.info('reset Q_hat = Q')
             self.target_network.load_state_dict(self.network.state_dict())
     
 
@@ -133,8 +169,12 @@ class DQN():
         '''
         get Q_s using network by state
         '''
-        inputs = Transition.transform_state(state).unsqueeze(0)
+        image   = Transition.transform_state(state)
 
+        # add an axis
+        inputs  = image.unsqueeze(0)
+
+        self.network.eval()
         with torch.no_grad(): 
             if torch.cuda.is_available(): 
                 inputs = inputs.cuda()
@@ -151,7 +191,7 @@ if __name__ == '__main__':
     action_space = 3
     model = DQN(action_space)
     experience_replay_memory = ExperienceReplayMemory()
-    BATCH_SIZE = 2
+    BATCH_SIZE = 64
 
     arr_transition_batch = experience_replay_memory.sample(BATCH_SIZE)
     if arr_transition_batch is not None: 
@@ -188,11 +228,17 @@ if __name__ == '__main__':
     done = True
 
     t = Transition(state, action_id, reward, next_state, done)
-    experience_replay_memory.store(t)
+    for i in range(0, BATCH_SIZE): 
+        experience_replay_memory.store(t)
 
     arr_transition_batch = experience_replay_memory.sample(BATCH_SIZE)
     if not len(arr_transition_batch) == BATCH_SIZE: 
         print('sample test error')
         sys.exit(0)
 
+    t3 = time.time()
     model.update_Q(arr_transition_batch)
+    t4 = time.time()
+    # 0.17073 s
+    print('update_Q total time: %.5f' % (t4 - t3))
+
