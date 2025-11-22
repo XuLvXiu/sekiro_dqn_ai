@@ -168,7 +168,6 @@ class GameStatusWindow():
         # refresh UI
         self.root.update_idletasks()
         self.root.update()
-        self.q_status_window.update()
 
 
 if __name__ == '__main__': 

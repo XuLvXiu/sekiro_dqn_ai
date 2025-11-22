@@ -5,21 +5,20 @@ import sys
 
 import os
 import numpy as np
-from storage import Storage
 import pickle
 import json
+import torch
 
 # load Q
 action_space = 100
-Q = Storage(action_space)
-N = Storage(action_space)
-CHECKPOINT_FILE = 'checkpoint.pkl'
+CHECKPOINT_FILE = 'checkpoint.pth'
 JSON_FILE = 'checkpoint.json'
 
-with open(CHECKPOINT_FILE, 'rb') as f: 
-    (Q, N) = pickle.load(f)
-    print('Q: %s' % (Q.summary('Q')))
-    print('N: %s' % (N.summary('N')))
+obj = torch.load(CHECKPOINT_FILE)
+print(obj.keys())
+for key in ['step_i']: 
+    print('key: %s' % (key))
+    print('value: ', obj[key])
 
 with open(JSON_FILE, 'r', encoding='utf-8') as f: 
     obj_information = json.load(f)

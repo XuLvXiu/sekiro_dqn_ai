@@ -30,9 +30,12 @@ class Rule():
 
         # classification model
 
+        '''
+        not needed, replaced by DQN
         # state-4: class-4
         if state.state_id == env.state_manager.BAD_TUCI_STATE_ID: 
             return 0
+        '''
 
         # state-3: 
         if state.state_id == env.state_manager.FUZHOU_STATE_ID: 

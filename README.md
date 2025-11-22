@@ -66,7 +66,7 @@ state-11-19 是指攻击之后处于 state-0 的几个 step 的分段，主要�
 
 其中，前 5 个状态由分类模型预测产生。
 
-这一次，我们把处于防御状态 state-0, state-4, state-11-19 交给 DQN 来处理，但也不是全部，只有当分类模型预测出来的 class 为 0 / 4 的时候才这样做，希望它能够比 state-10 做的更好，所以它也叫 state-10, 原有的 state-4 state-10 state-11-19 就不再需要了，但是 state-0 还是依然存在的，比如当分类模型预测出来的  class 为 1 且信号强度不足以支持 state-1 的时候，就会 fall back 到 state-0。
+这一次，我们把处于防御状态 state-0, state-4, state-11-19 交给 DQN 来处理，但也不是全部，只有当分类模型预测出来的 class 为 0 / 4 的时候才这样做，希望它能够比 state-10 做的更好，所以它同样叫做 state-10, 原有的 state-4 state-10 state-11-19 就不再需要了，但是 state-0 还是依然存在的，比如当分类模型预测出来的  class 为 1 且信号强度不足以支持 state-1 的时候，就会 fall back 到 state-0。
 
 剩余的几个状态全部由规则来处理，此规则来自于 Q-Learning 项目中的训练结果，这几个 state 没有 Q 值，也不参与到 DQN 的计算之中。
 

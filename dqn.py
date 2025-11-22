@@ -201,7 +201,7 @@ class DQN():
             if torch.cuda.is_available(): 
                 inputs = inputs.cuda()
             outputs = self.network(inputs)
-            return outputs
+            return outputs.detach().cpu()
 
 
 # test 

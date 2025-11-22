@@ -169,7 +169,7 @@ class Trainer:
 
             # take action(A), get reward(R) and next state(S')
             # at first, convert RL action_id to game action_id
-            game_action_id = self.arr_possible_action_id[action_id]
+            game_action_id = self.env.arr_possible_action_id[action_id]
             log.info('convert rl action_id[%s] to game action id[%s]' % (action_id, game_action_id))
             next_state, reward, is_done = env.step(game_action_id)
 
@@ -206,17 +206,21 @@ class Trainer:
 
         # why not train the DQN when the episode ends?
         # here we have plenty of time
-        log.info('will train the DQN for %s steps' % (DQN_steps))
+        log.info('in this episode, will train the DQN for %s steps' % (DQN_steps))
         for i in range(0, DQN_steps): 
             # sample random minibatch of transitions from D
             arr_transition_batch = self.experience_replay_memory.sample(self.BATCH_SIZE)
 
-            if arr_transition_batch is not None: 
-                if not len(arr_transition_batch) == self.BATCH_SIZE: 
-                    print('something is wrong with the experience_replay_memory.sample')
-                    sys.exit(-1)
-                # update Q(aka: network)
-                self.DQN.update_Q(arr_transition_batch)
+            if arr_transition_batch is None: 
+                log.debug('due to insufficient experience, will not train DQN')
+                break
+
+            if not len(arr_transition_batch) == self.BATCH_SIZE: 
+                print('something is wrong with the experience_replay_memory.sample')
+                sys.exit(-1)
+
+            # update Q(aka: network)
+            self.DQN.update_Q(arr_transition_batch)
 
         log.info('episode done. length: %s' % (step_i))
         self.env.update_game_status_window()
