@@ -17,7 +17,6 @@ import pickle
 import json
 import time
 import argparse
-from storage import Storage
 from rule import Rule
 from dqn import DQN
 from experience_replay_memory import Transition, ExperienceReplayMemory
@@ -45,16 +44,8 @@ class Trainer:
         # episode parameters
         self.MAX_EPISODES = 1000
         self.next_episode = 0
-        self.CHECKPOINT_FILE = 'checkpoint.pkl'
+        self.CHECKPOINT_FILE = 'checkpoint.pth'
         self.JSON_FILE = 'checkpoint.json'
-
-        log.info('is_resume: %s' % (is_resume))
-        if is_resume: 
-            obj_information = self.load_checkpoint()
-            self.next_episode = obj_information['episode']
-
-        # create game status window
-        self.env.create_game_status_window()
 
         # create the DQN 
         self.DQN = DQN(self.action_space)
@@ -64,6 +55,14 @@ class Trainer:
 
         # small batch runs faster
         self.BATCH_SIZE = 64
+
+        log.info('is_resume: %s' % (is_resume))
+        if is_resume: 
+            obj_information = self.load_checkpoint()
+            self.next_episode = obj_information['episode']
+
+        # create game status window
+        self.env.create_game_status_window()
 
 
     def train(self): 
@@ -137,6 +136,7 @@ class Trainer:
         state = env.get_state()
 
         step_i = 0
+        DQN_steps = 0
 
         while True: 
             # log.info('generate_episode main loop running')
@@ -175,7 +175,6 @@ class Trainer:
 
             # if current state is a DQN state, we need to do more work on DQN.
             if state.state_id == self.env.state_manager.DQN_STATE_ID: 
-                t3 = time.time()
                 # if next state is not a DQN state, this means the episode is done for DQN
                 done = is_done
                 if not next_state.state_id == self.env.state_manager.DQN_STATE_ID: 
@@ -187,18 +186,6 @@ class Trainer:
 
                 # only train the model when it is over, 
                 # as the training process will take a very long time.
-                if done: 
-                    # sample random minibatch of transitions from D
-                    arr_transition_batch = self.experience_replay_memory.sample(self.BATCH_SIZE)
-
-                    if arr_transition_batch is not None: 
-                        if not len(arr_transition_batch) == self.BATCH_SIZE: 
-                            print('something is wrong with the experience_replay_memory.sample')
-                            sys.exit(-1)
-                        # update Q(aka: network)
-                        self.DQN.update_Q(arr_transition_batch)
-                t4 = time.time()
-                log.info('DQN total time: %.2f s' % (t4-t3))
 
             # everything is done.
             # prepare for next step
@@ -208,6 +195,7 @@ class Trainer:
             t2 = time.time()
             log.info('generate_episode main loop end one step, time: %.2f s' % (t2-t1))
             step_i += 1
+            DQN_steps += 1
 
             if is_done: 
                 env.stop()
@@ -215,6 +203,20 @@ class Trainer:
                 break
 
         # end of while loop
+
+        # why not train the DQN when the episode ends?
+        # here we have plenty of time
+        log.info('will train the DQN for %s steps' % (DQN_steps))
+        for i in range(0, DQN_steps): 
+            # sample random minibatch of transitions from D
+            arr_transition_batch = self.experience_replay_memory.sample(self.BATCH_SIZE)
+
+            if arr_transition_batch is not None: 
+                if not len(arr_transition_batch) == self.BATCH_SIZE: 
+                    print('something is wrong with the experience_replay_memory.sample')
+                    sys.exit(-1)
+                # update Q(aka: network)
+                self.DQN.update_Q(arr_transition_batch)
 
         log.info('episode done. length: %s' % (step_i))
         self.env.update_game_status_window()
@@ -243,7 +245,9 @@ class Trainer:
         log.info('save_checkpoint...')
         log.info('do NOT terminate the power, still saving...')
         # log.info('actions: %s' % (self.env.arr_action_name))
-        
+        # save DQN
+        torch.save(self.DQN.dump(), self.CHECKPOINT_FILE)
+
         log.info('still saving...')
 
         # write json information
@@ -261,6 +265,8 @@ class Trainer:
         log.info('load_checkpoint')
         obj_information = {'episode': 0}
         try: 
+            # load DQN
+            self.DQN.load(torch.load(self.CHECKPOINT_FILE))
             with open(self.JSON_FILE, 'r', encoding='utf-8') as f: 
                 obj_information = json.load(f)
         except Exception as e: 

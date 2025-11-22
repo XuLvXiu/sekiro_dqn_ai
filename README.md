@@ -134,6 +134,10 @@ DQN 的可能动作只有三种：防御、普通攻击、识破+攻击，应该
 
 每一个 episode 结束之后，把训练的相关信息以及模型参数保存到 checkpoint 文件中。
 
+在 `train.py` 中我们把 DQN 的代码拆分了出来，也就是说一部分逻辑在 `train.py` 中，另外一部分逻辑在 `dqn.py` 和 `experience_replay_memory.py` 中
+
+由于训练 DQN 的过程运行起来比较慢，也许换个显卡就行，也许优化代码就行。 但是我们选择了另外一条路，并非在每个 step 中训练 DQN，而是把一个 episode 中的多个 step 积累起来，等到 episode 结束的时候再进行多步的训练。
+
 
 - 查看 Q
 
@@ -165,6 +169,9 @@ python main.py
 ## 人工备份
 
 模型的训练过程与结果主要涉及到如下的几个文件：
+
+- checkpoint.pth	存储了 DQN 中的两个 network的参数，以及 optimizer 的参数，以及其它一些相关信息.
+- checkpoint.json	记录了当前是哪个 episode，以及完成训练时的时间
 
 如果要训练新模型的话，可能需要对老模型的这些数据进行备份。
 

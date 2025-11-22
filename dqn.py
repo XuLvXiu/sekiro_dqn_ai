@@ -76,6 +76,31 @@ class DQN():
         return model
 
 
+    def dump(self): 
+        '''
+        dump the DQN
+        '''
+        obj = {
+            'step_i': self.step_i,
+            'network.state_dict': self.network.state_dict(),
+            'target_network.state_dict': self.target_network.state_dict(),
+            'optimizer.state_dict': self.optimizer.state_dict(),
+        }
+        log.info('DQN.dump, step_i:%s' % (self.step_i))
+        return obj
+
+
+    def load(self, obj): 
+        '''
+        load params and overwrite DQN
+        '''
+        self.step_i = obj['step_i']
+        self.network.load_state_dict(obj['network.state_dict'])
+        self.target_network.load_state_dict(obj['target_network.state_dict'])
+        self.optimizer.load_state_dict(obj['optimizer.state_dict'])
+        log.info('DQN.load, step_i:%s' % (self.step_i))
+
+
     def update_Q(self, arr_transition_batch): 
         '''
         update the network using experience replay batch.
@@ -158,7 +183,7 @@ class DQN():
 
         # every C steps, reset Q_hat = Q
         if self.step_i % self.C == 0: 
-            log.info('reset Q_hat = Q')
+            log.info('reset Q_hat = Q after C[%s] steps' % (self.C))
             self.target_network.load_state_dict(self.network.state_dict())
     
 

@@ -559,10 +559,9 @@ class Env(object):
 
         # never modify the state from now on.
 
-        log.debug('get new state end, hp: %5.2f %5.2f, class_id: %s, state_id: %s, arr_history_class_id: %s, posture: %.1f, is_attack: %s, is_parry_after_attack: %s' % (state.player_hp, 
+        log.debug('get new state end, hp: %5.2f %5.2f, class_id: %s, state_id: %s, arr_history_class_id: %s, posture: %.1f' % (state.player_hp, 
             state.boss_hp, state.class_id, state.state_id, state.arr_history_class_id,
-            state.player_posture, state.is_attack, state.is_parry_after_attack 
-            ))
+            state.player_posture))
 
         # update game status
         self.game_status.update_by_state(state)
