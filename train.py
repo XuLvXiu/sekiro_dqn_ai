@@ -63,7 +63,7 @@ class Trainer:
         self.experience_replay_memory = ExperienceReplayMemory()
 
         # small batch runs faster
-        self.BATCH_SIZE = 64 / 2
+        self.BATCH_SIZE = 64
 
 
     def train(self): 
@@ -185,15 +185,18 @@ class Trainer:
                 transition = Transition(state, action_id, reward, next_state, done)
                 self.experience_replay_memory.store(transition)
 
-                # sample random minibatch of transitions from D
-                arr_transition_batch = self.experience_replay_memory.sample(self.BATCH_SIZE)
+                # only train the model when it is over, 
+                # as the training process will take a very long time.
+                if done: 
+                    # sample random minibatch of transitions from D
+                    arr_transition_batch = self.experience_replay_memory.sample(self.BATCH_SIZE)
 
-                if arr_transition_batch is not None: 
-                    if not len(arr_transition_batch) == self.BATCH_SIZE: 
-                        print('something is wrong with the experience_replay_memory.sample')
-                        sys.exit(-1)
-                    # update Q(aka: network)
-                    self.DQN.update_Q(arr_transition_batch)
+                    if arr_transition_batch is not None: 
+                        if not len(arr_transition_batch) == self.BATCH_SIZE: 
+                            print('something is wrong with the experience_replay_memory.sample')
+                            sys.exit(-1)
+                        # update Q(aka: network)
+                        self.DQN.update_Q(arr_transition_batch)
                 t4 = time.time()
                 log.info('DQN total time: %.2f s' % (t4-t3))
 
