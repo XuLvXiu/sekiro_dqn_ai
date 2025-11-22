@@ -14,10 +14,13 @@ from log import log
 from pynput.keyboard import Listener, Key
 import os
 import numpy as np
-from storage import Storage
 from env import Env
 import pickle
 import json
+from dqn import DQN
+from experience_replay_memory import Transition, ExperienceReplayMemory
+from rule import Rule
+import torch
 
 g_episode_is_running = False
 def signal_handler(sig, frame):
@@ -50,6 +53,10 @@ signal.signal(signal.SIGINT, signal_handler)
 keyboard_listener = Listener(on_press=on_press)
 keyboard_listener.start()
 
+# create the DQN
+action_space    = 2
+obj_rule        = Rule()
+model           = DQN(action_space)
 
 # create game env
 env = Env()
@@ -57,13 +64,18 @@ env.create_game_status_window()
 env.eval()
 
 # load Q
+CHECKPOINT_FILE = 'checkpoint.pth'
 JSON_FILE = 'checkpoint.json'
 
 with open(JSON_FILE, 'r', encoding='utf-8') as f: 
     obj_information = json.load(f)
 
 log.info(obj_information)
+model.load(torch.load(CHECKPOINT_FILE))
+
 env.game_status.episode = obj_information['episode']
+env.game_status.DQN_loss    = model.loss
+env.game_status.DQN_steps   = model.step_i
 
 '''
 # generate the policy
@@ -101,17 +113,13 @@ while True:
     env.game_status.state_id   = state.final_state_id
     env.update_game_status_window()
 
-    # get action by state from Q
-    maybe need to select action from rule first
-    if not Q.has(state): 
-        log.error('why Q not have this state?')
-        sys.exit(-1)
-
-    # Q(s) contains rules and explore results.
-    Q_s = Q.get(state)
-    a_star = np.argmax(Q_s)
-    log.debug('Q_s:%s, a_star: %s' % (Q_s, a_star))
-    action_id = a_star
+    # get action by state from rule and Q
+    action_id = obj_rule.apply(state, env)
+    if action_id is None: 
+        Q_s = model.get_Q(state)
+        a_star = np.argmax(Q_s)
+        log.debug('Q_s:%s, a_star: %s' % (Q_s, a_star))
+        action_id = a_star
 
     # at first, convert rl action_id to game action_id
     game_action_id = arr_possible_action_id[action_id]

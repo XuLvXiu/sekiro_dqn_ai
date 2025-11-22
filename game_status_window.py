@@ -25,7 +25,8 @@ class GameStatus():
         self.is_boss_hp_down    = False
         self.player_posture     = 0
 
-        self.boss_angry_point = 0
+        self.DQN_loss           = 0
+        self.DQN_steps          = 0
 
 
     def update_by_state(self, state): 
@@ -85,11 +86,11 @@ class GameStatusWindow():
         self.add_label('boss_hp', self.right_frame)
 
         self.add_label('player_posture', self.left_frame)
-        self.add_label('boss_angry_point', self.right_frame)
+        self.add_label('DQN_loss', self.right_frame)
         # self.add_label('empty', self.right_frame)
 
         self.add_label('episode', self.left_frame)
-        self.add_label('error', self.right_frame)
+        self.add_label('DQN_steps', self.right_frame)
 
         # data source
         self.game_status = game_status
@@ -146,24 +147,19 @@ class GameStatusWindow():
         self.labels[key].config(fg='black')
         self.variables[key].set('%s: %.2f' % (key, self.game_status.player_posture))
 
-        key = 'boss_angry_point'
+        key = 'DQN_loss'
         self.labels[key].config(fg='black')
-        if self.game_status.boss_angry_point > 40: 
-            self.labels[key].config(fg='red')
-
-        self.variables[key].set('boss_ap: %.2f' % (self.game_status.boss_angry_point))
+        self.variables[key].set('%s: %.2f' % (key, self.game_status.DQN_loss))
 
         key = 'episode'
         self.variables[key].set('[%s] %s: %s-%s' % (self.game_status.mode, 
             key, 
             self.game_status.episode, self.game_status.step_i))
 
-        key = 'error'
+        key = 'DQN_steps'
         self.variables[key].set('')
         self.labels[key].config(fg='black')
-        if len(self.game_status.error) > 0: 
-            self.variables[key].set('%s: %s' % (key, self.game_status.error))
-            self.labels[key].config(fg='red')
+        self.variables[key].set('%s: %s' % (key, self.game_status.DQN_steps))
 
         # refresh UI
         self.root.update_idletasks()

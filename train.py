@@ -38,7 +38,7 @@ class Trainer:
         self.env.train()
 
         # possible actions to be explored in RL
-        self.action_space = 3
+        self.action_space = 2
         self.arr_possible_action_id = self.env.arr_possible_action_id[0:self.action_space]
 
         # episode parameters
@@ -223,6 +223,10 @@ class Trainer:
             # update Q(aka: network)
             self.DQN.update_Q(arr_transition_batch)
 
+            self.env.game_status.DQN_steps  = self.DQN.step_i
+            self.env.game_status.DQN_loss   = self.DQN.loss
+            self.env.update_game_status_window()
+
         log.info('episode done. length: %s' % (step_i))
         self.env.update_game_status_window()
 
@@ -280,6 +284,11 @@ class Trainer:
             log.error('ERROR load checkpoint: %s', (e))
 
         log.debug(obj_information)
+
+        self.env.game_status.DQN_steps  = self.DQN.step_i
+        self.env.game_status.DQN_loss   = self.DQN.loss
+        self.env.update_game_status_window()
+
         return obj_information
 
 

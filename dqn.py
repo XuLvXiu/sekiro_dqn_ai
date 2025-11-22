@@ -61,6 +61,9 @@ class DQN():
         # create loss function.
         self.loss_function = torch.nn.MSELoss()
 
+        # display the loss in the game status window
+        self.loss = 0
+
 
     def create_network(self): 
         '''
@@ -85,6 +88,7 @@ class DQN():
             'network.state_dict': self.network.state_dict(),
             'target_network.state_dict': self.target_network.state_dict(),
             'optimizer.state_dict': self.optimizer.state_dict(),
+            'loss': self.loss,
         }
         log.info('DQN.dump, step_i:%s' % (self.step_i))
         return obj
@@ -98,6 +102,7 @@ class DQN():
         self.network.load_state_dict(obj['network.state_dict'])
         self.target_network.load_state_dict(obj['target_network.state_dict'])
         self.optimizer.load_state_dict(obj['optimizer.state_dict'])
+        self.loss = obj['loss']
         log.info('DQN.load, step_i:%s' % (self.step_i))
 
 
@@ -181,6 +186,7 @@ class DQN():
         # 0.01423 s
         loss = self.loss_function(y, y_j)
         log.debug('loss[%s]' % (loss))
+        self.loss = loss.item()
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
