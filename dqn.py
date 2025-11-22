@@ -93,10 +93,10 @@ class DQN():
         # [BATCH_SIZE, 3, 224, 224]
         # print(arr_state.shape)
 
-        arr_action      = torch.tensor([t.action_id for t in arr_transition_batch])
-        arr_reward      = torch.tensor([t.reward for t in arr_transition_batch])
+        arr_action      = torch.tensor([t.action_id for t in arr_transition_batch], device=self.device)
+        arr_reward      = torch.tensor([t.reward for t in arr_transition_batch], device=self.device)
         arr_next_state  = torch.stack([t.next_state.image_DQN for t in arr_transition_batch])
-        arr_done        = torch.tensor([t.done for t in arr_transition_batch])
+        arr_done        = torch.tensor([t.done for t in arr_transition_batch], device=self.device)
 
 
         # Q-learning (Watkins，1989)
@@ -110,8 +110,6 @@ class DQN():
             inputs = arr_next_state
             if torch.cuda.is_available(): 
                 inputs      = inputs.cuda()
-                arr_reward  = arr_reward.cuda()
-                arr_done    = arr_done.cuda()
             Q_s_next = self.target_network(inputs)
             max_value_in_Q_s_next, max_indices = Q_s_next.max(dim=1)
             y_j = arr_reward + self.GAMMA * max_value_in_Q_s_next
@@ -131,7 +129,6 @@ class DQN():
         inputs = arr_state
         if torch.cuda.is_available(): 
             inputs      = inputs.cuda()
-            arr_action  = arr_action.cuda()
 
         # torch.cuda.synchronize()
         # t1 = time.time()
@@ -141,7 +138,7 @@ class DQN():
         # print(t2-t1)
 
         # from each row, get Q_s_a by action
-        rows = torch.arange(Q_s.shape[0]).to(self.device)
+        rows = torch.arange(Q_s.shape[0], device=self.device)
         Q_s_a = Q_s[rows, arr_action]
         y = Q_s_a
 
