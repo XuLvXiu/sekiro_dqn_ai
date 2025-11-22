@@ -175,6 +175,8 @@ class Trainer:
 
             # if current state is a DQN state, we need to do more work on DQN.
             if state.state_id == self.env.state_manager.DQN_STATE_ID: 
+                DQN_steps += 1
+
                 # if next state is not a DQN state, this means the episode is done for DQN
                 done = is_done
                 if not next_state.state_id == self.env.state_manager.DQN_STATE_ID: 
@@ -195,7 +197,6 @@ class Trainer:
             t2 = time.time()
             log.info('generate_episode main loop end one step, time: %.2f s' % (t2-t1))
             step_i += 1
-            DQN_steps += 1
 
             if is_done: 
                 env.stop()
@@ -258,6 +259,8 @@ class Trainer:
         log.debug(obj_information)
         with open(self.JSON_FILE, 'w', encoding='utf-8') as f: 
             json.dump(obj_information, f, indent=4, ensure_ascii=False) 
+
+        # should we save experience_replay_memory?
 
         log.info('saved ok')
 

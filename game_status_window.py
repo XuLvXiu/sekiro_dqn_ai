@@ -114,7 +114,7 @@ class GameStatusWindow():
         '''
         key = 'is_ai'
         if self.game_status.is_ai: 
-            self.variables[key].set('Q-Learning AI')
+            self.variables[key].set('DQN AI')
             self.labels[key].config(fg='blue')
         else: 
             self.variables[key].set('人工')

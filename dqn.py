@@ -52,7 +52,7 @@ class DQN():
         '''
         however, if we dump the two state_dict() to binary files, the MD5 of the files are different...
         I think it might be due to tensor floating point numbers.
-        If you use torch.save, it will be even more wired.
+        If you use torch.save, it will be even more weird.
         '''
 
         # create optimizer using network's parameters.
@@ -140,6 +140,12 @@ class DQN():
             y_j = arr_reward + self.GAMMA * max_value_in_Q_s_next
 
         # if episode terminates at step j+1, y_j = r_j
+        '''
+        weird bug: 
+            RuntimeError: Index put requires the source and destination dtypes match, 
+            got Float for the destination and Long for the source.
+        I think we need to convert t.reward to float type.
+        '''
         y_j[arr_done] = arr_reward[arr_done]
 
         max_log_items = 4
@@ -213,7 +219,7 @@ if __name__ == '__main__':
     action_space = 3
     model = DQN(action_space)
     experience_replay_memory = ExperienceReplayMemory()
-    BATCH_SIZE = 64
+    BATCH_SIZE = 8
 
     arr_transition_batch = experience_replay_memory.sample(BATCH_SIZE)
     if arr_transition_batch is not None: 
@@ -250,7 +256,7 @@ if __name__ == '__main__':
     done = True
 
     t = Transition(state, action_id, reward, next_state, done)
-    for i in range(0, BATCH_SIZE): 
+    for i in range(0, BATCH_SIZE * 2): 
         experience_replay_memory.store(t)
 
     arr_transition_batch = experience_replay_memory.sample(BATCH_SIZE)
