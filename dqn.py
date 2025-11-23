@@ -19,7 +19,7 @@ class DQN():
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
         # learning rate
-        self.LEARNING_RATE  = 0.01
+        self.LEARNING_RATE  = 0.0001
         self.GAMMA = 0.85
 
         # every C steps, reset Q_hat = Q
@@ -36,24 +36,7 @@ class DQN():
         self.target_network = self.create_network()
 
         # copy weights
-        self.target_network.load_state_dict(self.network.state_dict())
-
-        # check if the two networks have the same weights.
-        for (name_1, p1), (name_2, p2) in zip(self.network.state_dict().items(),
-                self.target_network.state_dict().items()): 
-            if not name_1 == name_2: 
-                print('two network state_dict() have different layer names', name_1, name_2)
-                sys.exit(-1)
-
-            if not torch.equal(p1, p2): 
-                print('two network state_dict() have different params')
-                sys.exit(-1)
-
-        '''
-        however, if we dump the two state_dict() to binary files, the MD5 of the files are different...
-        I think it might be due to tensor floating point numbers.
-        If you use torch.save, it will be even more weird.
-        '''
+        self.reset_Q_hat()
 
         # create optimizer using network's parameters.
         self.optimizer = torch.optim.Adam(self.network.parameters(), lr=self.LEARNING_RATE)
@@ -72,7 +55,12 @@ class DQN():
         model = resnet18(weights=ResNet18_Weights.DEFAULT)
         num_classes = self.num_classes
         num_ftrs = model.fc.in_features
-        model.fc = torch.nn.Linear(num_ftrs, num_classes)
+        # model.fc = torch.nn.Linear(num_ftrs, num_classes)
+        model.fc = torch.nn.Sequential(
+            torch.nn.Linear(num_ftrs, 256),
+            torch.nn.Dropout(0.2),
+            torch.nn.Linear(256, num_classes),
+        )
         if torch.cuda.is_available(): 
             model = model.cuda()
 
@@ -196,8 +184,31 @@ class DQN():
         # every C steps, reset Q_hat = Q
         if self.step_i % self.C == 0: 
             log.info('reset Q_hat = Q after C[%s] steps' % (self.C))
-            self.target_network.load_state_dict(self.network.state_dict())
+            self.reset_Q_hat()
     
+
+    def reset_Q_hat(self): 
+        '''
+        reset Q_hat = Q
+        '''
+        self.target_network.load_state_dict(self.network.state_dict())
+
+        # check if the two networks have the same weights.
+        for (name_1, p1), (name_2, p2) in zip(self.network.state_dict().items(),
+                self.target_network.state_dict().items()): 
+            if not name_1 == name_2: 
+                print('two network state_dict() have different layer names', name_1, name_2)
+                sys.exit(-1)
+
+            if not torch.equal(p1, p2): 
+                print('two network state_dict() have different params')
+                sys.exit(-1)
+        '''
+        however, if we dump the two state_dict() to binary files, the MD5 of the files are different...
+        I think it might be due to tensor floating point numbers.
+        If you use torch.save, it will be even more weird.
+        '''
+
 
     def get_Q(self, state): 
         '''

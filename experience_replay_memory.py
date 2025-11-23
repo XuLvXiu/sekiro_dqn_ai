@@ -24,7 +24,9 @@ class Transition():
         '''
         self.state      = state
         self.action_id  = action_id
-        self.reward     = float(reward)
+
+        # smaller reward, the convergence speed of the model will be faster
+        self.reward     = (float(reward) + 50) / 100
         self.next_state = next_state
         self.done       = done
 
@@ -80,7 +82,7 @@ class ExperienceReplayMemory():
         '''
         sample random minibatch of transitions from D.
         '''
-        if len(self.arr_transitions) < batch_size * 2: 
+        if len(self.arr_transitions) < batch_size * 1.5: 
             return None
 
         ret = random.sample(self.arr_transitions, batch_size)

@@ -149,7 +149,7 @@ class GameStatusWindow():
 
         key = 'DQN_loss'
         self.labels[key].config(fg='black')
-        self.variables[key].set('%s: %.2f' % (key, self.game_status.DQN_loss))
+        self.variables[key].set('%s: %.4f' % (key, self.game_status.DQN_loss))
 
         key = 'episode'
         self.variables[key].set('[%s] %s: %s-%s' % (self.game_status.mode, 
