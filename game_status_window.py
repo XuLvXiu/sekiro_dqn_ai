@@ -129,7 +129,10 @@ class GameStatusWindow():
         self.variables[key].set('%s' % (self.game_status.action_name))
 
         key = 'state_id'
-        self.variables[key].set('%s: %s' % (key, self.game_status.state_id))
+        value = self.game_status.state_id
+        if value == 10: 
+            value = '10-DQN'
+        self.variables[key].set('%s: %s' % (key, value))
 
         key = 'player_hp'
         self.variables[key].set('%s: %.2f' % (key, self.game_status.player_hp))
@@ -171,5 +174,7 @@ if __name__ == '__main__':
     game_status.is_ai = True
     window = GameStatusWindow(game_status)
     while True: 
+        game_status.state_id += 1
+        game_status.state_id %= 20
         time.sleep(0.5)
         window.update()

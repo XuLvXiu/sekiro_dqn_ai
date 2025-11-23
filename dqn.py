@@ -23,7 +23,8 @@ class DQN():
         self.GAMMA = 0.85
 
         # every C steps, reset Q_hat = Q
-        self.C      = 100
+        # I do NOT know the appropriate value for this param.
+        self.C      = 64
         self.step_i = 0
 
         self.num_classes    = action_space
@@ -78,7 +79,7 @@ class DQN():
             'optimizer.state_dict': self.optimizer.state_dict(),
             'loss': self.loss,
         }
-        log.info('DQN.dump, step_i:%s' % (self.step_i))
+        log.info('DQN.dump, step_i: %s, loss: %s' % (self.step_i, self.loss))
         return obj
 
 
@@ -91,7 +92,7 @@ class DQN():
         self.target_network.load_state_dict(obj['target_network.state_dict'])
         self.optimizer.load_state_dict(obj['optimizer.state_dict'])
         self.loss = obj['loss']
-        log.info('DQN.load, step_i:%s' % (self.step_i))
+        log.info('DQN.load, step_i: %s, loss: %s' % (self.step_i, self.loss))
 
 
     def update_Q(self, arr_transition_batch): 
