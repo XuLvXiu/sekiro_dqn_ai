@@ -126,7 +126,14 @@ class GameStatusWindow():
             self.variables[key].set('')
 
         key = 'action_name'
-        self.variables[key].set('%s' % (self.game_status.action_name))
+        prefix = ''
+        self.labels[key].config(fg='black')
+        if self.game_status.state_id == 10: 
+            prefix = 'DQN-'
+            self.labels[key].config(fg='GREEN')
+            if self.game_status.action_name == 'ATTACK': 
+                self.labels[key].config(fg='RED')
+        self.variables[key].set('%s%s' % (prefix, self.game_status.action_name))
 
         key = 'state_id'
         value = self.game_status.state_id

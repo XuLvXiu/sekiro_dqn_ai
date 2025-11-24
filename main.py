@@ -21,6 +21,7 @@ from dqn import DQN
 from experience_replay_memory import Transition, ExperienceReplayMemory
 from rule import Rule
 import torch
+import random
 
 g_episode_is_running = False
 def signal_handler(sig, frame):
@@ -48,6 +49,9 @@ def on_press(key):
     except Exception as e:
         print(e)
 
+
+def on_action_finished(): 
+    pass
 
 signal.signal(signal.SIGINT, signal_handler)
 keyboard_listener = Listener(on_press=on_press)
@@ -130,8 +134,16 @@ while True:
     game_action_id = arr_possible_action_id[action_id]
     log.info('convert rl action_id[%s] to game action id[%s]' % (action_id, game_action_id))
 
+    # move left randomly, to escape from the corner of the ground.
+    random_move = False
+    if random.randint(0, 9) >= 3 and game_action_id in [env.PARRY_ACTION_ID, env.LONG_PARRY_ACTION_ID]: 
+        random_move = True
+    if random_move: 
+        env.executor.take_action('MOVE_LEFT_START', action_finished_callback=on_action_finished)
     # do next step, get next state
     next_state, reward, is_done = env.step(game_action_id)
+    if random_move: 
+        env.executor.take_action('MOVE_LEFT_STOP', action_finished_callback=on_action_finished)
     t2 = time.time()
     log.info('predict main loop end one epoch, time: %.2f s' % (t2-t1))
 

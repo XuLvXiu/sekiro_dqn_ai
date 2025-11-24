@@ -66,6 +66,12 @@ class Env(object):
 
             # 13
             'LONG_PARRY',
+
+            # 14
+            'MOVE_LEFT_START',
+
+            # 15
+            'MOVE_LEFT_STOP',
             'JUMP'
         ]
 

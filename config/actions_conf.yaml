@@ -56,13 +56,11 @@ actions:
     - ['release', 'w']
 
   LONG_PARRY: 
-    - ['press_mouse', 'right']
     - ['press', 'w']
     - ['press_mouse', 'right']
     - ['delay', 0.8 ]
 
   PARRY: &PARRY
-    - ['press_mouse', 'right']
     - ['press', 'w']
     - ['press_mouse', 'right']
     - ['delay', 0.1 ]
@@ -134,6 +132,12 @@ actions:
 
     - ['release', 's']
     - ['delay', 0.1]
+
+  MOVE_LEFT_START: 
+    - ['press', 'a']
+
+  MOVE_LEFT_STOP: 
+    - ['release', 'a']
 
   DIANBU_PARRY_ATTACK: 
     - *SHIPO
