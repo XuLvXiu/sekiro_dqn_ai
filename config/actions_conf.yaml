@@ -133,6 +133,7 @@ actions:
     - ['delay', 0.4]
 
     - ['release', 's']
+    - ['delay', 0.1]
 
   DIANBU_PARRY_ATTACK: 
     - *SHIPO

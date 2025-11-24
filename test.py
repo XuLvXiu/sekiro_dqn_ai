@@ -14,7 +14,6 @@ from log import log
 from pynput.keyboard import Listener, Key
 import os
 import numpy as np
-from storage import Storage
 from env import Env
 import pickle
 import json
@@ -57,9 +56,9 @@ env.eval()
 env.reset()
 state = env.get_state()
 
-arr_action_id = [env.PARRY_ACTION_ID, env.PARRY_ACTION_ID, env.PARRY_ACTION_ID,
-        env.STAND_UP_ACTION_ID,
-        env.PARRY_ACTION_ID, env.PARRY_ACTION_ID
+arr_action_id = [
+    env.STAND_UP_ACTION_ID,
+    env.LONG_PARRY_ACTION_ID,
 ]
 index = 0
 while True: 

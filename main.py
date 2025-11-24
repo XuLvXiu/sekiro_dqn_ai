@@ -148,6 +148,15 @@ while True:
             env.take_action(env.ATTACK_ACTION_ID)
             time.sleep(1)
             env.is_player_dead = False
+
+            # reset player previous posture
+            # so the player will not consider its posture crashed after resurrection.
+            env.previous_player_posture = 0
+
+            # reset previous action id
+            # so that the signal strength will be reset.
+            env.previous_action_id      = -1
+
             state = env.get_state()
             # if take a new life, continue the game
             continue
