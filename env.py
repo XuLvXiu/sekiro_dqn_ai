@@ -525,8 +525,6 @@ class Env(object):
         '''
         check posture down
         '''
-        '''
-        not needed
         if player_posture < self.previous_player_posture: 
             # posture decrease to a reasonable value.
             state.is_player_posture_down_ok         = True
@@ -535,9 +533,12 @@ class Env(object):
             # posture is close to 0
             state.is_player_posture_down_ok         = True
 
+        '''
+        not needed
         # if boss is too angry, cancel the attack
         if self.boss_angry_point > 40: 
             state.is_player_posture_down_ok = False
+        '''
 
         # if we are going to die, cancel the attack
         if player_hp < self.state_manager.HULU_THRESHOLD: 
@@ -546,7 +547,6 @@ class Env(object):
         # if our posture crashed, cancel the attack
         if state.is_player_posture_crash: 
             state.is_player_posture_down_ok = False
-        '''
 
         # predict class id
         inputs = self.transform_state(state)

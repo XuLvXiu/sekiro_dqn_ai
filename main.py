@@ -121,6 +121,11 @@ while True:
         log.debug('Q_s:%s, a_star: %s' % (Q_s, a_star))
         action_id = a_star
 
+        # reduce the probability of attack.
+        if action_id == 1: 
+            if not state.is_player_posture_down_ok: 
+                action_id = 0
+
     # at first, convert rl action_id to game action_id
     game_action_id = arr_possible_action_id[action_id]
     log.info('convert rl action_id[%s] to game action id[%s]' % (action_id, game_action_id))
@@ -152,10 +157,6 @@ while True:
             # reset player previous posture
             # so the player will not consider its posture crashed after resurrection.
             env.previous_player_posture = 0
-
-            # reset previous action id
-            # so that the signal strength will be reset.
-            env.previous_action_id      = -1
 
             state = env.get_state()
             # if take a new life, continue the game

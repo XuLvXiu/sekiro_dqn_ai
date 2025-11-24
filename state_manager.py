@@ -27,11 +27,11 @@ class State():
 
         self.is_player_posture_crash    = False
 
-        '''
-        not needed
         # if posture down to a reasonable value from former high value.
         self.is_player_posture_down_ok  = False
 
+        '''
+        not needed
         # if an attack state / parry after attack state
         self.is_attack                  = False
         self.is_parry_after_attack      = False
