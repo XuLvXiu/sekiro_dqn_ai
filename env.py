@@ -481,7 +481,7 @@ class Env(object):
     def get_state(self): 
         '''
         get a new state from env.
-        calcaute player's hp and boss' hp
+        calculate the HP of the player and the boss
         '''
         log.debug('get new state begin')
         frame = grabscreen.grab_screen()
