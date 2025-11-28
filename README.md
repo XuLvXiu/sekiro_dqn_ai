@@ -12,8 +12,9 @@
 
 三周目白金的 DQN 狼 再战 稀世强者苇名弦一郎
 
-https://www.bilibili.com/video//
+https://www.bilibili.com/video/BV1D8SLBSE2G/
 
+这段视频录了得有十来遍，才战胜了一阶段的弦一郎。
 
 ## 游戏设置
 
